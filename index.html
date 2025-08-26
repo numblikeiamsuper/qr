@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>One‑Time Link Tool</title>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+  form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; }
+  input[type=url], input[type=text] { width: 100%; padding: 0.5rem; }
+  button { padding: 0.5rem 1rem; margin-top: 0.5rem; }
+  #output { margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h1>One‑Time Link Tool</h1>
+
+<div id="output"></div>
+
+<form id="addForm">
+  <h3>Create New Code</h3>
+  <label>Destination URL:<br>
+  <input type="url" name="url" required></label><br>
+  <button type="submit">Add New Link</button>
+</form>
+
+<form id="updateForm" style="display:none;">
+  <h3>Update Existing Code</h3>
+  <label>New URL for code <span id="codeLabel"></span>:<br>
+  <input type="url" name="newUrl" required></label><br>
+  <button type="submit">Update Link</button>
+</form>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const code = [...params.keys()][0] || '';
+const output = document.getElementById('output');
+const addForm = document.getElementById('addForm');
+const updateForm = document.getElementById('updateForm');
+const codeLabel = document.getElementById('codeLabel');
+
+if (code) {
+  fetch('/peek/' + code)
+    .then(r => r.json())
+    .then(data => {
+      if (data.url) {
+        output.innerHTML = `<p>Code <b>${code}</b> points to: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+        codeLabel.textContent = code;
+        updateForm.style.display = 'block';
+      } else {
+        output.textContent = 'Error: This code links to nothing.';
+      }
+    })
+    .catch(err => output.textContent = 'Error: ' + err);
+}
+
+addForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const url = e.target.url.value;
+  fetch('/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+  .then(r => r.json())
+  .then(data => {
+    output.innerHTML = `<p>New code: <a href="/?${data.code}">/?${data.code}</a></p>`;
+    addForm.reset();
+  })
+  .catch(err => output.textContent = 'Error: ' + err);
+});
+
+updateForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const newUrl = e.target.newUrl.value;
+  fetch('/update/' + code, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: newUrl })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      output.innerHTML = `<p>Updated code <b>${code}</b> to: <a href="${newUrl}">${newUrl}</a></p>`;
+    } else {
+      output.textContent = 'Error updating link.';
+    }
+    updateForm.reset();
+  })
+  .catch(err => output.textContent = 'Error: ' + err);
+});
+</script>
+</body>
+</html>
