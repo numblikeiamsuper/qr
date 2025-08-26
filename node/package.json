@@ -1,0 +1,12 @@
+{
+  "name": "one-time-link-tool",
+  "version": "1.0.0",
+  "description": "Minimal one-time link generator/updater",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
