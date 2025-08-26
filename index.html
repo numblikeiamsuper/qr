@@ -31,6 +31,8 @@
 </form>
 
 <script>
+const API_BASE = 'https://corsproxy.io/?url=' + encodeURIComponent('allmyfellasforlife.servebeer.com:3000');
+
 const params = new URLSearchParams(window.location.search);
 const code = [...params.keys()][0] || '';
 const output = document.getElementById('output');
@@ -39,7 +41,7 @@ const updateForm = document.getElementById('updateForm');
 const codeLabel = document.getElementById('codeLabel');
 
 if (code) {
-  fetch('/peek/' + code)
+  fetch(API_BASE + '/peek/' + code)
     .then(r => r.json())
     .then(data => {
       if (data.url) {
@@ -56,7 +58,7 @@ if (code) {
 addForm.addEventListener('submit', e => {
   e.preventDefault();
   const url = e.target.url.value;
-  fetch('/add', {
+  fetch(API_BASE + '/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url })
@@ -72,7 +74,7 @@ addForm.addEventListener('submit', e => {
 updateForm.addEventListener('submit', e => {
   e.preventDefault();
   const newUrl = e.target.newUrl.value;
-  fetch('/update/' + code, {
+  fetch(API_BASE + '/update/' + code, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url: newUrl })
