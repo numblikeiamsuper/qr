@@ -1,95 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>One‑Time Link Tool</title>
-<style>
-  body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
-  form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; }
-  input[type=url], input[type=text] { width: 100%; padding: 0.5rem; }
-  button { padding: 0.5rem 1rem; margin-top: 0.5rem; }
-  #output { margin-top: 1rem; }
-</style>
+  <meta charset="UTF-8" />
+  <title>One-Time Redirect Link Generator</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; max-width: 600px; margin: auto; }
+    input, button, textarea { width: 100%; margin: 0.5em 0; padding: 0.5em; }
+    textarea { height: 200px; }
+    .used { text-decoration: line-through; color: gray; }
+  </style>
 </head>
 <body>
-<h1>One‑Time Link Tool</h1>
+  <h1>🔗 One-Time Redirect Generator</h1>
+  <input type="text" id="destination" placeholder="Enter destination URL" />
+  <button onclick="generateLinks()">Generate 30 Links</button>
+  <textarea id="output" readonly></textarea>
+  <ul id="linkList"></ul>
 
-<div id="output"></div>
+  <script>
+    const apiKey = "pk_cknSzy2t9eCc2JHi";
+    const domain = "0.qwe1.gleeze.com";
+    const output = document.getElementById("output");
+    const linkList = document.getElementById("linkList");
 
-<form id="addForm">
-  <h3>Create New Code</h3>
-  <label>Destination URL:<br>
-  <input type="url" name="url" required></label><br>
-  <button type="submit">Add New Link</button>
-</form>
+    async function generateLinks() {
+      const destination = document.getElementById("destination").value;
+      if (!destination) return alert("Please enter a destination URL");
 
-<form id="updateForm" style="display:none;">
-  <h3>Update Existing Code</h3>
-  <label>New URL for code <span id="codeLabel"></span>:<br>
-  <input type="url" name="newUrl" required></label><br>
-  <button type="submit">Update Link</button>
-</form>
+      output.value = "Generating links...\n";
+      linkList.innerHTML = "";
 
-<script>
-const API_BASE = 'https://corsproxy.io/?url=' + encodeURIComponent('allmyfellasforlife.servebeer.com:3000');
+      for (let i = 0; i < 30; i++) {
+        const uniquePath = `one-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const shortLink = `https://${domain}/${uniquePath}`;
 
-const params = new URLSearchParams(window.location.search);
-const code = [...params.keys()][0] || '';
-const output = document.getElementById('output');
-const addForm = document.getElementById('addForm');
-const updateForm = document.getElementById('updateForm');
-const codeLabel = document.getElementById('codeLabel');
+        const res = await fetch("https://api.short.io/links", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": apiKey
+          },
+          body: JSON.stringify({
+            domain,
+            originalURL: destination,
+            path: uniquePath
+          })
+        });
 
-if (code) {
-  fetch(API_BASE + '/peek/' + code)
-    .then(r => r.json())
-    .then(data => {
-      if (data.url) {
-        output.innerHTML = `<p>Code <b>${code}</b> points to: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
-        codeLabel.textContent = code;
-        updateForm.style.display = 'block';
-      } else {
-        output.textContent = 'Error: This code links to nothing.';
+        const data = await res.json();
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = data.shortURL;
+        a.textContent = data.shortURL;
+        a.target = "_blank";
+        a.onclick = function () {
+          a.classList.add("used");
+          a.onclick = () => false;
+        };
+        li.appendChild(a);
+        linkList.appendChild(li);
+        output.value += `${data.shortURL}\n`;
       }
-    })
-    .catch(err => output.textContent = 'Error: ' + err);
-}
-
-addForm.addEventListener('submit', e => {
-  e.preventDefault();
-  const url = e.target.url.value;
-  fetch(API_BASE + '/add', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url })
-  })
-  .then(r => r.json())
-  .then(data => {
-    output.innerHTML = `<p>New code: <a href="/?${data.code}">/?${data.code}</a></p>`;
-    addForm.reset();
-  })
-  .catch(err => output.textContent = 'Error: ' + err);
-});
-
-updateForm.addEventListener('submit', e => {
-  e.preventDefault();
-  const newUrl = e.target.newUrl.value;
-  fetch(API_BASE + '/update/' + code, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: newUrl })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      output.innerHTML = `<p>Updated code <b>${code}</b> to: <a href="${newUrl}">${newUrl}</a></p>`;
-    } else {
-      output.textContent = 'Error updating link.';
     }
-    updateForm.reset();
-  })
-  .catch(err => output.textContent = 'Error: ' + err);
-});
-</script>
+  </script>
 </body>
 </html>
