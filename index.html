@@ -1,67 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>One-Time Redirect Link Generator</title>
-  <style>
-    body { font-family: sans-serif; padding: 2em; max-width: 600px; margin: auto; }
-    input, button, textarea { width: 100%; margin: 0.5em 0; padding: 0.5em; }
-    textarea { height: 200px; }
-    .used { text-decoration: line-through; color: gray; }
-  </style>
+<meta charset="UTF-8" />
+<title>Custom One‑Time Link + QR PDF Generator</title>
+<style>
+  body { font-family: sans-serif; padding: 1.5em; max-width: 700px; margin:auto; }
+  label { display:block; margin-top:1em; font-weight:bold; }
+  input, button { width:100%; padding:0.5em; margin-top:0.3em; }
+  textarea { width:100%; height:150px; margin-top:0.5em; }
+  #status { margin-top: 1em; color: #555; }
+</style>
 </head>
 <body>
-  <h1>🔗 One-Time Redirect Generator</h1>
-  <input type="text" id="destination" placeholder="Enter destination URL" />
-  <button onclick="generateLinks()">Generate 30 Links</button>
-  <textarea id="output" readonly></textarea>
-  <ul id="linkList"></ul>
 
-  <script>
-    const apiKey = "pk_cknSzy2t9eCc2JHi";
-    const domain = "0.qwe1.gleeze.com";
-    const output = document.getElementById("output");
-    const linkList = document.getElementById("linkList");
+<h1>🔗 Generate Redirect Links & QR PDF</h1>
 
-    async function generateLinks() {
-      const destination = document.getElementById("destination").value;
-      if (!destination) return alert("Please enter a destination URL");
+<label>Destination URL:</label>
+<input type="text" id="destination" placeholder="https://example.com/page" />
 
-      output.value = "Generating links...\n";
-      linkList.innerHTML = "";
+<label>Number of links to generate:</label>
+<input type="number" id="linkCount" min="1" max="100" value="20" />
 
-      for (let i = 0; i < 30; i++) {
-        const uniquePath = `one-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-        const shortLink = `https://${domain}/${uniquePath}`;
+<button onclick="generateLinks()">Generate Links & PDF</button>
 
-        const res = await fetch("https://api.short.io/links", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": apiKey
-          },
-          body: JSON.stringify({
-            domain,
-            originalURL: destination,
-            path: uniquePath
-          })
-        });
+<textarea id="output" readonly placeholder="Generated links will appear here..."></textarea>
 
-        const data = await res.json();
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = data.shortURL;
-        a.textContent = data.shortURL;
-        a.target = "_blank";
-        a.onclick = function () {
-          a.classList.add("used");
-          a.onclick = () => false;
-        };
-        li.appendChild(a);
-        linkList.appendChild(li);
-        output.value += `${data.shortURL}\n`;
+<div id="status"></div>
+
+<!-- QR code generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- jsPDF for PDF creation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+const apiKey = "pk_cknSzy2t9eCc2JHi"; 
+const domain = "0.qwe1.gleeze.com";
+const output = document.getElementById("output");
+const statusEl = document.getElementById("status");
+
+async function generateLinks() {
+  const destination = document.getElementById("destination").value.trim();
+  const count = parseInt(document.getElementById("linkCount").value, 10);
+  if (!destination) return alert("Please enter a destination URL");
+  if (count < 1) return alert("Please enter a valid number of links");
+
+  output.value = "";
+  statusEl.textContent = "Generating Short.io links...";
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+  let x = 10, y = 10;
+  const boxSize = 50;
+  let linkIndex = 0;
+
+  for (let i = 0; i < count; i++) {
+    const uniquePath = `one-${Date.now()}-${Math.random().toString(36).substr(2,5)}`;
+    const res = await fetch("https://api.short.io/links", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": apiKey
+      },
+      body: JSON.stringify({
+        domain,
+        originalURL: destination,
+        path: uniquePath
+      })
+    });
+    const data = await res.json();
+    const shortURL = data.shortURL;
+    output.value += shortURL + "\n";
+
+    // Make a QR code in a hidden element
+    const tempDiv = document.createElement("div");
+    new QRCode(tempDiv, {
+      text: shortURL,
+      width: boxSize,
+      height: boxSize
+    });
+    const img = tempDiv.querySelector("img");
+    // Draw QR into PDF
+    pdf.addImage(img.src, "PNG", x, y, boxSize, boxSize);
+    pdf.text(shortURL, x, y + boxSize + 5);
+    x += 70;
+    linkIndex++;
+    if (linkIndex % 3 === 0) { // wrap in rows of 3
+      x = 10;
+      y += 70;
+      if (y + boxSize > 280 && i < count - 1) {
+        pdf.addPage();
+        x = 10; y = 10;
       }
     }
-  </script>
+  }
+
+  statusEl.textContent = "Done. Downloading PDF...";
+  pdf.save("redirect_qrcodes.pdf");
+  statusEl.textContent = "PDF downloaded.";
+}
+</script>
+
 </body>
 </html>
