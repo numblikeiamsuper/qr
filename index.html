@@ -2,103 +2,273 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Custom One‑Time Link + QR PDF Generator</title>
+<title>Redirect Link + QR PDF (via CORS Proxy)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  body { font-family: sans-serif; padding: 1.5em; max-width: 700px; margin:auto; }
-  label { display:block; margin-top:1em; font-weight:bold; }
-  input, button { width:100%; padding:0.5em; margin-top:0.3em; }
-  textarea { width:100%; height:150px; margin-top:0.5em; }
-  #status { margin-top: 1em; color: #555; }
+  :root {
+    --w: 760px;
+    --gap: 12px;
+    --fg: #111;
+    --muted: #666;
+    --accent: #4f46e5;
+    --bg: #fafafa;
+    --ok: #0ea5e9;
+    --err: #ef4444;
+  }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--fg); background: var(--bg); margin: 0; }
+  .wrap { max-width: var(--w); margin: 24px auto 80px; padding: 0 16px; }
+  h1 { font-size: 1.35rem; margin: 0 0 10px; }
+  p.hint { color: var(--muted); margin: 0 0 20px; }
+  label { font-weight: 600; display: block; margin: 14px 0 6px; }
+  input[type="text"], input[type="number"] {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; background:#fff;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+  .row-3 { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: var(--gap); }
+  button {
+    appearance: none; border: 0; padding: 12px 16px; border-radius: 10px; color: #fff;
+    background: var(--accent); font-weight: 700; cursor: pointer; width: 100%;
+  }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .panel {
+    background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; margin-top: 16px;
+  }
+  textarea {
+    width: 100%; box-sizing: border-box; min-height: 160px; border: 1px solid #eee; border-radius: 10px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .status { font-size: 0.95rem; color: var(--muted); margin-top: 10px; white-space: pre-line; }
+  progress { width: 100%; height: 8px; margin-top: 8px; }
+  .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:700; font-size:12px; margin-left:8px; }
+  .ok { color: var(--ok); }
+  .err { color: var(--err); }
+  .opts { display:flex; gap:14px; align-items:center; margin-top:8px; color:#333; }
+  .opts input { width:auto; }
+  .small { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>Redirect Link + QR PDF <span class="pill">Static + Proxy</span></h1>
+    <p class="hint">Generates Short.io links through your CORS proxy, then builds a PDF of QR codes for the redirect URLs.</p>
 
-<h1>🔗 Generate Redirect Links & QR PDF</h1>
+    <div class="panel">
+      <div class="row-3">
+        <div>
+          <label>Destination URL</label>
+          <input id="dest" type="text" placeholder="https://example.com/landing" />
+        </div>
+        <div>
+          <label>Count</label>
+          <input id="count" type="number" min="1" max="300" value="30" />
+        </div>
+        <div>
+          <label>Domain</label>
+          <input id="domain" type="text" value="0.qwe1.gleeze.com" />
+        </div>
+      </div>
 
-<label>Destination URL:</label>
-<input type="text" id="destination" placeholder="https://example.com/page" />
+      <div class="row">
+        <div>
+          <label>Proxy URL</label>
+          <input id="proxy" type="text" placeholder="https://your-app.vercel.app/api/shortio-proxy" value="/api/shortio-proxy" />
+          <div class="small">This endpoint should forward to https://api.short.io/links and add CORS headers.</div>
+        </div>
+        <div>
+          <label>Path prefix (optional)</label>
+          <input id="prefix" type="text" placeholder="one-" />
+          <div class="small">Used to label paths like one-20250827-abc123</div>
+        </div>
+      </div>
 
-<label>Number of links to generate:</label>
-<input type="number" id="linkCount" min="1" max="100" value="20" />
+      <div class="opts">
+        <label><input id="showUrls" type="checkbox" /> Print full URLs under QR</label>
+        <label><input id="landscape" type="checkbox" /> PDF landscape layout</label>
+      </div>
 
-<button onclick="generateLinks()">Generate Links & PDF</button>
+      <div style="margin-top:14px;">
+        <button id="goBtn">Generate Links + Build PDF</button>
+      </div>
 
-<textarea id="output" readonly placeholder="Generated links will appear here..."></textarea>
+      <div class="status" id="status">Idle.</div>
+      <progress id="prog" value="0" max="100" hidden></progress>
+    </div>
 
-<div id="status"></div>
+    <div class="panel">
+      <label>Generated redirect URLs</label>
+      <textarea id="links" readonly placeholder="Links will appear here after generation..."></textarea>
+      <div class="small">These are the Short.io redirect URLs. The QR codes in the PDF encode these URLs.</div>
+    </div>
+  </div>
 
-<!-- QR code generator -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- jsPDF for PDF creation -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- QR code generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-M9G6V2NYzR1g9/1k3dR93hLZ9w5Y0aw8oMcR5BziW+R+H7mC8mCEx3FQpG9Wg4gX9U3mS8m9Yz5kG8n2sQfKkg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-Yk9v0KpQyG7sK6JwT6R3GfC2z2+9QO9FQxv3q7dP2H0mP8Cplh1i9QvGtz3bW7yS6Qh6H8r0o2cP3r1Cw3K5tw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<script>
-const apiKey = "pk_cknSzy2t9eCc2JHi"; 
-const domain = "0.qwe1.gleeze.com";
-const output = document.getElementById("output");
-const statusEl = document.getElementById("status");
+  <script>
+    const el = id => document.getElementById(id);
+    const goBtn = el('goBtn');
+    const statusEl = el('status');
+    const prog = el('prog');
 
-async function generateLinks() {
-  const destination = document.getElementById("destination").value.trim();
-  const count = parseInt(document.getElementById("linkCount").value, 10);
-  if (!destination) return alert("Please enter a destination URL");
-  if (count < 1) return alert("Please enter a valid number of links");
+    function setStatus(msg, cls) {
+      statusEl.className = 'status ' + (cls || '');
+      statusEl.textContent = msg;
+    }
 
-  output.value = "";
-  statusEl.textContent = "Generating Short.io links...";
+    function validUrl(u) {
+      try { new URL(u); return true; } catch { return false; }
+    }
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  let x = 10, y = 10;
-  const boxSize = 50;
-  let linkIndex = 0;
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  for (let i = 0; i < count; i++) {
-    const uniquePath = `one-${Date.now()}-${Math.random().toString(36).substr(2,5)}`;
-    const res = await fetch("https://api.short.io/links", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": apiKey
-      },
-      body: JSON.stringify({
-        domain,
-        originalURL: destination,
-        path: uniquePath
-      })
-    });
-    const data = await res.json();
-    const shortURL = data.shortURL;
-    output.value += shortURL + "\n";
+    function uniquePath(prefix = '') {
+      const t = new Date();
+      const ts = [
+        t.getFullYear(),
+        String(t.getMonth() + 1).padStart(2,'0'),
+        String(t.getDate()).padStart(2,'0'),
+        String(t.getHours()).padStart(2,'0'),
+        String(t.getMinutes()).padStart(2,'0'),
+        String(t.getSeconds()).padStart(2,'0')
+      ].join('');
+      const rnd = Math.random().toString(36).slice(2, 8);
+      return `${prefix || ''}${ts}-${rnd}`;
+    }
 
-    // Make a QR code in a hidden element
-    const tempDiv = document.createElement("div");
-    new QRCode(tempDiv, {
-      text: shortURL,
-      width: boxSize,
-      height: boxSize
-    });
-    const img = tempDiv.querySelector("img");
-    // Draw QR into PDF
-    pdf.addImage(img.src, "PNG", x, y, boxSize, boxSize);
-    pdf.text(shortURL, x, y + boxSize + 5);
-    x += 70;
-    linkIndex++;
-    if (linkIndex % 3 === 0) { // wrap in rows of 3
-      x = 10;
-      y += 70;
-      if (y + boxSize > 280 && i < count - 1) {
-        pdf.addPage();
-        x = 10; y = 10;
+    async function createShortLink(proxyUrl, domain, originalURL, path) {
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, originalURL, path })
+      });
+      if (!res.ok) {
+        let errText = '';
+        try { errText = await res.text(); } catch {}
+        throw new Error(`Proxy/Short.io error ${res.status}: ${errText || res.statusText}`);
+      }
+      return res.json(); // expected to contain { shortURL, ... }
+    }
+
+    async function generate() {
+      const destination = el('dest').value.trim();
+      const count = parseInt(el('count').value, 10);
+      const domain = el('domain').value.trim();
+      const proxyUrl = el('proxy').value.trim();
+      const prefix = el('prefix').value.trim();
+      const showUrls = el('showUrls').checked;
+      const landscape = el('landscape').checked;
+
+      if (!destination || !validUrl(destination)) { alert('Enter a valid Destination URL'); return; }
+      if (!domain) { alert('Enter your Short.io domain'); return; }
+      if (!proxyUrl || !validUrl(new URL(proxyUrl, window.location.href).href)) { alert('Enter a valid Proxy URL (absolute or site-relative)'); return; }
+      if (!(count > 0)) { alert('Enter a positive Count'); return; }
+
+      goBtn.disabled = true;
+      prog.hidden = false; prog.value = 0;
+      setStatus('Creating links via proxy…', '');
+
+      const made = [];
+      for (let i = 0; i < count; i++) {
+        try {
+          const path = uniquePath(prefix);
+          const data = await createShortLink(proxyUrl, domain, destination, path);
+          if (!data.shortURL) throw new Error('No shortURL in response');
+          made.push(data.shortURL);
+          setStatus(`Created ${i + 1}/${count}`, 'ok');
+        } catch (e) {
+          setStatus(`Error at index ${i + 1}: ${e.message}`, 'err');
+          // small backoff then continue
+          await sleep(500);
+        }
+        prog.value = Math.round(((i + 1) / count) * 100);
+        // Gentle pacing to avoid rate limits; adjust as needed
+        await sleep(120);
+      }
+
+      // Fill textarea
+      el('links').value = made.join('\n');
+
+      if (made.length === 0) {
+        setStatus('No links created. Check proxy URL, domain, and API key on the proxy.', 'err');
+        goBtn.disabled = false; prog.hidden = true;
+        return;
+      }
+
+      setStatus('Building PDF of QR codes…', '');
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+
+        const margin = 10;
+        const cols = 3;
+        const cellW = (pageW - margin * 2) / cols;
+        const qrSize = Math.min(50, cellW - 10);
+        const labelH = 6;
+        const rowH = qrSize + labelH + 6;
+
+        let x = margin, y = margin, col = 0;
+
+        for (let i = 0; i < made.length; i++) {
+          const url = made[i];
+
+          // Create QR in a temp container
+          const holder = document.createElement('div');
+          holder.style.position = 'fixed';
+          holder.style.left = '-9999px';
+          document.body.appendChild(holder);
+
+          const qr = new QRCode(holder, { text: url, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M });
+          // Wait a tick for DOM to render
+          await new Promise(r => setTimeout(r, 20));
+
+          // Prefer canvas data; fall back to image
+          let dataUrl = '';
+          const cvs = holder.querySelector('canvas');
+          const img = holder.querySelector('img');
+          if (cvs) dataUrl = cvs.toDataURL('image/png');
+          else if (img) dataUrl = img.src;
+          document.body.removeChild(holder);
+
+          if (!dataUrl) throw new Error('QR generation failed');
+
+          doc.addImage(dataUrl, 'PNG', x + (cellW - qrSize) / 2, y, qrSize, qrSize);
+
+          doc.setFontSize(9);
+          doc.text(showUrls ? url : `Link #${i + 1}`, x + 2, y + qrSize + 5, { maxWidth: cellW - 4 });
+
+          // Advance grid
+          col++;
+          if (col >= cols) {
+            col = 0;
+            x = margin;
+            y += rowH;
+          } else {
+            x += cellW;
+          }
+
+          // New page if needed
+          if (y + rowH > pageH - margin && i < made.length - 1) {
+            doc.addPage();
+            x = margin; y = margin; col = 0;
+          }
+        }
+
+        const safeDomain = domain.replace(/[^a-z0-9.-]/gi, '_');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `qrcodes_${made.length}_${safeDomain}_${ts}.pdf`;
+        doc.save(filename);
+        setStatus(`Done. PDF downloaded (${made.length} QR codes).`, 'ok');
+      } catch (e) {
+        setStatus(`PDF error: ${e.message}`, 'err');
+      } finally {
+        goBtn.disabled = false; prog.hidden = true;
       }
     }
-  }
 
-  statusEl.textContent = "Done. Downloading PDF...";
-  pdf.save("redirect_qrcodes.pdf");
-  statusEl.textContent = "PDF downloaded.";
-}
-</script>
-
+    goBtn.addEventListener('click', generate);
+  </script>
 </body>
 </html>
