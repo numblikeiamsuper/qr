@@ -2,459 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Short.io Link Manager — Static HTML</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Short.io Link Manager (via corsproxy.io)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:,"><!-- Prevent favicon 404 -->
 <style>
-  :root { --w: 1000px; --gap: 12px; --fg: #111; --muted: #666; --accent: #4f46e5; --bg: #fafafa; --ok:#16a34a; --err:#dc2626; }
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--fg); background: var(--bg); margin: 0; }
-  .wrap { max-width: var(--w); margin: 24px auto 96px; padding: 0 16px; }
-  h1 { font-size: 1.35rem; margin: 0 0 4px; }
-  p.hint { color: var(--muted); margin: 0 0 16px; }
-  .grid { display: grid; gap: var(--gap); }
-  .g2 { grid-template-columns: 1.5fr 1fr; }
-  .g3 { grid-template-columns: 1.5fr 1fr 1fr; }
-  .g4 { grid-template-columns: 1.6fr 1.2fr 1.2fr 1.2fr; }
-  label { display:block; font-weight: 600; margin-top: 8px; }
-  input[type="text"], input[type="number"] {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; background:#fff;
-  }
-  .row { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-top: 8px; }
-  .row .grow { flex: 1 1 auto; }
-  button {
-    appearance: none; border: 0; padding: 12px 16px; border-radius: 10px; color: #fff;
-    background: var(--accent); font-weight: 700; cursor: pointer;
-  }
-  button.secondary { background: #334155; }
-  button.danger { background: var(--err); }
-  button:disabled { opacity: 0.6; cursor: not-allowed; }
-  .panel { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; margin-top: 16px; }
-  .status { font-size: 0.95rem; color: var(--muted); margin-top: 10px; white-space: pre-line; }
-  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
-  .small { font-size: 12px; color: var(--muted); }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-  th { font-size: 12px; color: #374151; text-transform: uppercase; letter-spacing: .02em; }
-  td a { color: #0369a1; text-decoration: none; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-  .controls { display:flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:700; font-size:12px; margin-left:8px; }
-  .checkbox { width: 18px; height: 18px; }
+  body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }
+  h1 { font-size: 1.4em; }
+  label { display: block; margin-top: 1em; }
+  input, textarea, button { width: 100%; padding: 0.5em; margin-top: 0.3em; }
+  pre { background: #f0f0f0; padding: 0.5em; overflow-x: auto; }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Short.io Link Manager <span class="pill">Static</span></h1>
-    <p class="hint">Create normal Short.io links, view all links for your domain, and delete links. Works direct or via a CORS proxy.</p>
+<h1>Short.io Link Manager (CORS Proxy)</h1>
 
-    <div class="panel">
-      <div class="grid g4">
-        <div>
-          <label>Short.io API Key</label>
-          <input id="apiKey" type="text" placeholder="pk_xxx..." />
-          <div class="small">
-            Stored only in memory unless you tick “Remember on this device”.
-          </div>
-        </div>
-        <div>
-          <label>Domain</label>
-          <input id="domain" type="text" placeholder="your-domain.short.gy or custom" value="0.qwe1.gleeze.com" />
-        </div>
-        <div>
-          <label>API Mode</label>
-          <div class="row">
-            <label class="small"><input id="useProxy" type="checkbox" /> Use proxy</label>
-          </div>
-          <div class="small">Browsers may block direct calls due to CORS. If so, enable proxy.</div>
-        </div>
-        <div>
-          <label>Proxy Base URL</label>
-          <input id="proxyBase" type="text" placeholder="https://your-app.vercel.app/api/shortio" value="/api/shortio" />
-          <div class="small">Should forward to Short.io API paths like /links and add CORS headers.</div>
-        </div>
-      </div>
+<label>
+  API Key:
+  <input id="apiKey" type="password" placeholder="Enter your Short.io API key">
+</label>
 
-      <div class="grid g3" style="margin-top:10px;">
-        <div>
-          <label>Destination URL</label>
-          <input id="dest" type="text" placeholder="https://example.com/landing" />
-        </div>
-        <div>
-          <label>Count</label>
-          <input id="count" type="number" min="1" max="500" value="10" />
-        </div>
-        <div>
-          <label>Path prefix (optional)</label>
-          <input id="prefix" type="text" placeholder="promo-" />
-        </div>
-      </div>
+<label>
+  Original URL:
+  <input id="originalUrl" type="url" placeholder="https://example.com/page">
+</label>
 
-      <div class="row" style="margin-top:10px;">
-        <button id="createBtn">Create Links</button>
-        <button id="refreshBtn" class="secondary">Refresh List</button>
-        <button id="bulkDeleteBtn" class="danger" disabled>Delete Selected</button>
-        <label class="small"><input id="remember" type="checkbox" /> Remember on this device</label>
-      </div>
+<label>
+  Domain (e.g. 0.qwe1.gleeze.com):
+  <input id="domain" type="text" value="0.qwe1.gleeze.com">
+</label>
 
-      <div id="status" class="status">Idle.</div>
-    </div>
+<label>
+  Path (optional):
+  <input id="path" type="text" placeholder="custom-alias">
+</label>
 
-    <div class="panel">
-      <div class="controls">
-        <strong class="small">Filter:</strong>
-        <input id="filter" class="grow" type="text" placeholder="Search by original URL, path, or short URL..." />
-        <span class="small" id="countLabel"></span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th><input id="selectAll" class="checkbox" type="checkbox" /></th>
-            <th>Short URL</th>
-            <th>Original URL</th>
-            <th>Path</th>
-            <th>Created</th>
-            <th>Clicks</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </div>
+<button id="createBtn">Create Link</button>
+
+<h2>Response</h2>
+<pre id="responseOutput"></pre>
 
 <script>
-  // ----- Utilities
-  const $ = id => document.getElementById(id);
-  const fmtDate = s => {
-    try { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); } catch { return ''; }
-  };
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const validUrl = u => { try { new URL(u); return true; } catch { return false; } };
-  const genPath = (prefix='') => {
-    const t = new Date();
-    const ts = [t.getFullYear(), (t.getMonth()+1+'').padStart(2,'0'), (t.getDate()+'').padStart(2,'0'), (t.getHours()+'').padStart(2,'0'), (t.getMinutes()+'').padStart(2,'0'), (t.getSeconds()+'').padStart(2,'0')].join('');
-    const rnd = Math.random().toString(36).slice(2,7);
-    return `${prefix}${ts}-${rnd}`;
-  };
+(function(){
+  const corsProxyBase = "https://corsproxy.io/?url=";
+  
+  async function createLink() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const originalUrl = document.getElementById('originalUrl').value.trim();
+    const domain = document.getElementById('domain').value.trim();
+    const path = document.getElementById('path').value.trim();
 
-  // ----- Config read
-  function getConfig() {
-    return {
-      apiKey: $('apiKey').value.trim(),
-      domain: $('domain').value.trim(),
-      useProxy: $('useProxy').checked,
-      proxyBase: $('proxyBase').value.trim().replace(/\/+$/, '')
+    if (!apiKey || !originalUrl || !domain) {
+      alert("Please enter API key, original URL, and domain");
+      return;
+    }
+
+    // Build the *real* API endpoint we want
+    const targetUrl = `https://${domain}/api/shortio/links`;
+    // Wrap it with the CORS proxy
+    const proxiedUrl = corsProxyBase + encodeURIComponent(targetUrl);
+
+    const payload = {
+      originalURL: originalUrl,
+      domain: domain,
     };
-  }
-
-  // ----- API wrapper (direct vs proxy)
-  function apiUrl(path) {
-    const { useProxy, proxyBase } = getConfig();
-    if (useProxy) return `${proxyBase}${path}`;
-    return `https://api.short.io${path}`;
-  }
-
-  async function apiFetch(path, opts = {}) {
-    const { apiKey, useProxy } = getConfig();
-    const headers = Object.assign(
-      { 'Content-Type': 'application/json' },
-      // For proxy mode, the proxy should inject Authorization itself; if not, pass it through
-      useProxy ? {} : { 'Authorization': apiKey }
-    );
-    const res = await fetch(apiUrl(path), { ...opts, headers: { ...headers, ...(opts.headers||{}) } });
-    if (!res.ok) {
-      let t = '';
-      try { t = await res.text(); } catch {}
-      throw new Error(`${res.status} ${res.statusText} — ${t}`);
-    }
-    const ct = res.headers.get('content-type') || '';
-    return ct.includes('application/json') ? res.json() : res.text();
-  }
-
-  // ----- Short.io endpoints
-  // Create link
-  async function shortioCreateLink({ domain, originalURL, path }) {
-    return apiFetch('/links', {
-      method: 'POST',
-      body: JSON.stringify({ domain, originalURL, path })
-    });
-  }
-
-  // List links (paged)
-  async function shortioListLinks({ domain, limit=100, max=1000 }) {
-    let offset = 0, all = [];
-    while (all.length < max) {
-      const q = new URLSearchParams({ domain, limit: String(limit), offset: String(offset) });
-      const data = await apiFetch('/links?' + q.toString(), { method: 'GET' });
-      const items = Array.isArray(data) ? data : (data.links || data.data || []);
-      if (!items || items.length === 0) break;
-      all = all.concat(items);
-      if (items.length < limit) break;
-      offset += limit;
-      await sleep(80);
-    }
-    return all;
-  }
-
-  // Delete link by ID
-  async function shortioDeleteLink(id) {
-    return apiFetch(`/links/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  }
-
-  // Normalize link object
-  function normalizeLink(o) {
-    return {
-      id: o.idString || o.id || o._id || '',
-      shortURL: o.shortURL || o.secureShortURL || '',
-      originalURL: o.originalURL || o.originalUrl || '',
-      path: o.path || '',
-      createdAt: o.createdAt || o.created_at || '',
-      clicks: o.clicks || o.totalClicks || o.statClicks || 0
-    };
-  }
-
-  // ----- UI state
-  let rows = [];        // normalized links
-  let selected = new Set();
-
-  function setStatus(msg, cls='') {
-    const el = $('status');
-    el.className = 'status ' + cls;
-    el.textContent = msg;
-  }
-
-  function renderTable() {
-    const filter = $('filter').value.trim().toLowerCase();
-    const tbody = $('tbody');
-    tbody.innerHTML = '';
-    let shown = 0;
-
-    rows.forEach(r => {
-      const hay = `${r.shortURL} ${r.originalURL} ${r.path}`.toLowerCase();
-      if (filter && !hay.includes(filter)) return;
-
-      const tr = document.createElement('tr');
-
-      // Select
-      const tdSel = document.createElement('td');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.className = 'checkbox';
-      cb.checked = selected.has(r.id);
-      cb.addEventListener('change', () => {
-        if (cb.checked) selected.add(r.id); else selected.delete(r.id);
-        updateBulkControls();
-      });
-      tdSel.appendChild(cb);
-      tr.appendChild(tdSel);
-
-      // Short URL
-      const tdShort = document.createElement('td');
-      const a = document.createElement('a');
-      a.href = r.shortURL; a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = r.shortURL;
-      tdShort.appendChild(a);
-      tr.appendChild(tdShort);
-
-      // Original URL
-      const tdOrig = document.createElement('td');
-      tdOrig.innerHTML = `<span class="mono">${escapeHtml(r.originalURL)}</span>`;
-      tr.appendChild(tdOrig);
-
-      // Path
-      const tdPath = document.createElement('td');
-      tdPath.innerHTML = `<span class="mono">${escapeHtml(r.path)}</span>`;
-      tr.appendChild(tdPath);
-
-      // Created
-      const tdCreated = document.createElement('td');
-      tdCreated.textContent = fmtDate(r.createdAt);
-      tr.appendChild(tdCreated);
-
-      // Clicks
-      const tdClicks = document.createElement('td');
-      tdClicks.textContent = r.clicks ?? 0;
-      tr.appendChild(tdClicks);
-
-      // Actions
-      const tdAct = document.createElement('td');
-      const btnCopy = document.createElement('button');
-      btnCopy.textContent = 'Copy';
-      btnCopy.className = 'secondary';
-      btnCopy.style.padding = '6px 10px';
-      btnCopy.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(r.shortURL); setStatus('Copied to clipboard', 'ok'); } catch { setStatus('Copy failed', 'err'); }
-      });
-
-      const btnDel = document.createElement('button');
-      btnDel.textContent = 'Delete';
-      btnDel.className = 'danger';
-      btnDel.style.padding = '6px 10px';
-      btnDel.style.marginLeft = '6px';
-      btnDel.addEventListener('click', async () => {
-        if (!confirm(`Delete link?\n${r.shortURL}`)) return;
-        btnDel.disabled = true;
-        try {
-          await shortioDeleteLink(r.id);
-          rows = rows.filter(x => x.id !== r.id);
-          selected.delete(r.id);
-          renderTable();
-          setStatus('Link deleted', 'ok');
-        } catch (e) {
-          setStatus('Delete failed: ' + e.message, 'err');
-          btnDel.disabled = false;
-        }
-      });
-
-      tdAct.appendChild(btnCopy);
-      tdAct.appendChild(btnDel);
-      tr.appendChild(tdAct);
-
-      tbody.appendChild(tr);
-      shown++;
-    });
-
-    $('countLabel').textContent = `${shown} shown / ${rows.length} total`;
-  }
-
-  function updateBulkControls() {
-    $('bulkDeleteBtn').disabled = selected.size === 0;
-    // Update header checkbox
-    const allRendered = [...$('tbody').querySelectorAll('input[type=checkbox]')];
-    const allChecked = allRendered.length > 0 && allRendered.every(cb => cb.checked);
-    $('selectAll').checked = allChecked;
-  }
-
-  function escapeHtml(s) {
-    return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // ----- Actions
-  $('createBtn').addEventListener('click', async () => {
-    const cfg = getConfig();
-    const destination = $('dest').value.trim();
-    const count = parseInt($('count').value, 10) || 0;
-    const prefix = $('prefix').value.trim();
-
-    if (!cfg.apiKey && !cfg.useProxy) { alert('Enter your Short.io API key'); return; }
-    if (!cfg.domain) { alert('Enter your domain'); return; }
-    if (!destination || !validUrl(destination)) { alert('Enter a valid Destination URL'); return; }
-    if (count < 1) { alert('Count must be at least 1'); return; }
-
-    setStatus('Creating links…', '');
-    $('createBtn').disabled = true;
+    if (path) payload.path = path;
 
     try {
-      let created = 0;
-      for (let i = 0; i < count; i++) {
-        const body = { domain: cfg.domain, originalURL: destination, path: prefix ? genPath(prefix) : undefined };
-        const data = await shortioCreateLink(body);
-        const norm = normalizeLink(data);
-        if (!norm.shortURL) throw new Error('No shortURL in response');
-        rows.unshift(norm);
-        created++;
-        if (i % 5 === 0) renderTable(); // incremental paint
-        await sleep(80); // gentle pacing
-      }
-      renderTable();
-      setStatus(`Created ${created} link(s).`, 'ok');
-    } catch (e) {
-      setStatus('Create failed: ' + e.message, 'err');
-    } finally {
-      $('createBtn').disabled = false;
-    }
-  });
+      const res = await fetch(proxiedUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": apiKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
 
-  $('refreshBtn').addEventListener('click', async () => {
-    const cfg = getConfig();
-    if (!cfg.apiKey && !cfg.useProxy) { alert('Enter your Short.io API key'); return; }
-    if (!cfg.domain) { alert('Enter your domain'); return; }
-    setStatus('Loading links…', '');
-    $('refreshBtn').disabled = true;
-    try {
-      const list = await shortioListLinks({ domain: cfg.domain, limit: 100, max: 2000 });
-      rows = list.map(normalizeLink);
-      selected.clear();
-      renderTable();
-      updateBulkControls();
-      setStatus(`Loaded ${rows.length} link(s).`, 'ok');
-    } catch (e) {
-      setStatus('Load failed: ' + e.message, 'err');
-    } finally {
-      $('refreshBtn').disabled = false;
+      const data = await res.json();
+      document.getElementById('responseOutput').textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      document.getElementById('responseOutput').textContent = "Error: " + err.message;
     }
-  });
+  }
 
-  $('bulkDeleteBtn').addEventListener('click', async () => {
-    if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} selected link(s)?`)) return;
-    $('bulkDeleteBtn').disabled = true;
-    setStatus('Deleting selected links…', '');
-    try {
-      const ids = Array.from(selected);
-      for (let i = 0; i < ids.length; i++) {
-        try {
-          await shortioDeleteLink(ids[i]);
-          rows = rows.filter(r => r.id !== ids[i]);
-        } catch (e) {
-          // continue on individual failure
-        }
-        if (i % 5 === 0) renderTable();
-        await sleep(60);
-      }
-      selected.clear();
-      renderTable();
-      updateBulkControls();
-      setStatus('Bulk delete complete.', 'ok');
-    } catch (e) {
-      setStatus('Bulk delete failed: ' + e.message, 'err');
-    } finally {
-      $('bulkDeleteBtn').disabled = false;
-    }
-  });
-
-  $('filter').addEventListener('input', () => renderTable());
-  $('selectAll').addEventListener('change', (e) => {
-    const checked = e.target.checked;
-    const visibleRows = $('tbody').querySelectorAll('tr');
-    visibleRows.forEach(tr => {
-      const cb = tr.querySelector('input[type=checkbox]');
-      if (!cb) return;
-      cb.checked = checked;
-      const shortUrlCell = tr.children[1];
-      const shortUrl = shortUrlCell?.querySelector('a')?.href || '';
-      // map back to id
-      const r = rows.find(x => x.shortURL === shortUrl);
-      if (r) { if (checked) selected.add(r.id); else selected.delete(r.id); }
-    });
-    updateBulkControls();
-  });
-
-  // Remember locally
-  $('remember').addEventListener('change', (e) => {
-    const on = e.target.checked;
-    if (on) {
-      const cfg = getConfig();
-      localStorage.setItem('shortio_cfg', JSON.stringify({
-        apiKey: cfg.apiKey, domain: cfg.domain, useProxy: cfg.useProxy, proxyBase: cfg.proxyBase
-      }));
-    } else {
-      localStorage.removeItem('shortio_cfg');
-    }
-  });
-
-  // Load remembered
-  (function init() {
-    const raw = localStorage.getItem('shortio_cfg');
-    if (raw) {
-      try {
-        const cfg = JSON.parse(raw);
-        $('apiKey').value = cfg.apiKey || '';
-        $('domain').value = cfg.domain || '';
-        $('useProxy').checked = !!cfg.useProxy;
-        $('proxyBase').value = cfg.proxyBase || '/api/shortio';
-        $('remember').checked = true;
-      } catch {}
-    }
-  })();
+  document.getElementById('createBtn').addEventListener('click', createLink);
+})();
 </script>
+
 </body>
 </html>
