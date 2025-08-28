@@ -2,273 +2,459 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Redirect Link + QR PDF (via CORS Proxy)</title>
+<title>Short.io Link Manager — Static HTML</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  :root {
-    --w: 760px;
-    --gap: 12px;
-    --fg: #111;
-    --muted: #666;
-    --accent: #4f46e5;
-    --bg: #fafafa;
-    --ok: #0ea5e9;
-    --err: #ef4444;
-  }
+  :root { --w: 1000px; --gap: 12px; --fg: #111; --muted: #666; --accent: #4f46e5; --bg: #fafafa; --ok:#16a34a; --err:#dc2626; }
   body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--fg); background: var(--bg); margin: 0; }
-  .wrap { max-width: var(--w); margin: 24px auto 80px; padding: 0 16px; }
-  h1 { font-size: 1.35rem; margin: 0 0 10px; }
-  p.hint { color: var(--muted); margin: 0 0 20px; }
-  label { font-weight: 600; display: block; margin: 14px 0 6px; }
+  .wrap { max-width: var(--w); margin: 24px auto 96px; padding: 0 16px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  p.hint { color: var(--muted); margin: 0 0 16px; }
+  .grid { display: grid; gap: var(--gap); }
+  .g2 { grid-template-columns: 1.5fr 1fr; }
+  .g3 { grid-template-columns: 1.5fr 1fr 1fr; }
+  .g4 { grid-template-columns: 1.6fr 1.2fr 1.2fr 1.2fr; }
+  label { display:block; font-weight: 600; margin-top: 8px; }
   input[type="text"], input[type="number"] {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; background:#fff;
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; background:#fff;
   }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
-  .row-3 { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: var(--gap); }
+  .row { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-top: 8px; }
+  .row .grow { flex: 1 1 auto; }
   button {
     appearance: none; border: 0; padding: 12px 16px; border-radius: 10px; color: #fff;
-    background: var(--accent); font-weight: 700; cursor: pointer; width: 100%;
+    background: var(--accent); font-weight: 700; cursor: pointer;
   }
-  button:disabled { opacity: 0.6; cursor: wait; }
-  .panel {
-    background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; margin-top: 16px;
-  }
-  textarea {
-    width: 100%; box-sizing: border-box; min-height: 160px; border: 1px solid #eee; border-radius: 10px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  }
+  button.secondary { background: #334155; }
+  button.danger { background: var(--err); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .panel { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; margin-top: 16px; }
   .status { font-size: 0.95rem; color: var(--muted); margin-top: 10px; white-space: pre-line; }
-  progress { width: 100%; height: 8px; margin-top: 8px; }
-  .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:700; font-size:12px; margin-left:8px; }
-  .ok { color: var(--ok); }
-  .err { color: var(--err); }
-  .opts { display:flex; gap:14px; align-items:center; margin-top:8px; color:#333; }
-  .opts input { width:auto; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
   .small { font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  th { font-size: 12px; color: #374151; text-transform: uppercase; letter-spacing: .02em; }
+  td a { color: #0369a1; text-decoration: none; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .controls { display:flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:700; font-size:12px; margin-left:8px; }
+  .checkbox { width: 18px; height: 18px; }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Redirect Link + QR PDF <span class="pill">Static + Proxy</span></h1>
-    <p class="hint">Generates Short.io links through your CORS proxy, then builds a PDF of QR codes for the redirect URLs.</p>
+    <h1>Short.io Link Manager <span class="pill">Static</span></h1>
+    <p class="hint">Create normal Short.io links, view all links for your domain, and delete links. Works direct or via a CORS proxy.</p>
 
     <div class="panel">
-      <div class="row-3">
+      <div class="grid g4">
+        <div>
+          <label>Short.io API Key</label>
+          <input id="apiKey" type="text" placeholder="pk_xxx..." />
+          <div class="small">
+            Stored only in memory unless you tick “Remember on this device”.
+          </div>
+        </div>
+        <div>
+          <label>Domain</label>
+          <input id="domain" type="text" placeholder="your-domain.short.gy or custom" value="0.qwe1.gleeze.com" />
+        </div>
+        <div>
+          <label>API Mode</label>
+          <div class="row">
+            <label class="small"><input id="useProxy" type="checkbox" /> Use proxy</label>
+          </div>
+          <div class="small">Browsers may block direct calls due to CORS. If so, enable proxy.</div>
+        </div>
+        <div>
+          <label>Proxy Base URL</label>
+          <input id="proxyBase" type="text" placeholder="https://your-app.vercel.app/api/shortio" value="/api/shortio" />
+          <div class="small">Should forward to Short.io API paths like /links and add CORS headers.</div>
+        </div>
+      </div>
+
+      <div class="grid g3" style="margin-top:10px;">
         <div>
           <label>Destination URL</label>
           <input id="dest" type="text" placeholder="https://example.com/landing" />
         </div>
         <div>
           <label>Count</label>
-          <input id="count" type="number" min="1" max="300" value="30" />
-        </div>
-        <div>
-          <label>Domain</label>
-          <input id="domain" type="text" value="0.qwe1.gleeze.com" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Proxy URL</label>
-          <input id="proxy" type="text" placeholder="https://your-app.vercel.app/api/shortio-proxy" value="/api/shortio-proxy" />
-          <div class="small">This endpoint should forward to https://api.short.io/links and add CORS headers.</div>
+          <input id="count" type="number" min="1" max="500" value="10" />
         </div>
         <div>
           <label>Path prefix (optional)</label>
-          <input id="prefix" type="text" placeholder="one-" />
-          <div class="small">Used to label paths like one-20250827-abc123</div>
+          <input id="prefix" type="text" placeholder="promo-" />
         </div>
       </div>
 
-      <div class="opts">
-        <label><input id="showUrls" type="checkbox" /> Print full URLs under QR</label>
-        <label><input id="landscape" type="checkbox" /> PDF landscape layout</label>
+      <div class="row" style="margin-top:10px;">
+        <button id="createBtn">Create Links</button>
+        <button id="refreshBtn" class="secondary">Refresh List</button>
+        <button id="bulkDeleteBtn" class="danger" disabled>Delete Selected</button>
+        <label class="small"><input id="remember" type="checkbox" /> Remember on this device</label>
       </div>
 
-      <div style="margin-top:14px;">
-        <button id="goBtn">Generate Links + Build PDF</button>
-      </div>
-
-      <div class="status" id="status">Idle.</div>
-      <progress id="prog" value="0" max="100" hidden></progress>
+      <div id="status" class="status">Idle.</div>
     </div>
 
     <div class="panel">
-      <label>Generated redirect URLs</label>
-      <textarea id="links" readonly placeholder="Links will appear here after generation..."></textarea>
-      <div class="small">These are the Short.io redirect URLs. The QR codes in the PDF encode these URLs.</div>
+      <div class="controls">
+        <strong class="small">Filter:</strong>
+        <input id="filter" class="grow" type="text" placeholder="Search by original URL, path, or short URL..." />
+        <span class="small" id="countLabel"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th><input id="selectAll" class="checkbox" type="checkbox" /></th>
+            <th>Short URL</th>
+            <th>Original URL</th>
+            <th>Path</th>
+            <th>Created</th>
+            <th>Clicks</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- QR code generator -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-M9G6V2NYzR1g9/1k3dR93hLZ9w5Y0aw8oMcR5BziW+R+H7mC8mCEx3FQpG9Wg4gX9U3mS8m9Yz5kG8n2sQfKkg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-Yk9v0KpQyG7sK6JwT6R3GfC2z2+9QO9FQxv3q7dP2H0mP8Cplh1i9QvGtz3bW7yS6Qh6H8r0o2cP3r1Cw3K5tw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+  // ----- Utilities
+  const $ = id => document.getElementById(id);
+  const fmtDate = s => {
+    try { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); } catch { return ''; }
+  };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const validUrl = u => { try { new URL(u); return true; } catch { return false; } };
+  const genPath = (prefix='') => {
+    const t = new Date();
+    const ts = [t.getFullYear(), (t.getMonth()+1+'').padStart(2,'0'), (t.getDate()+'').padStart(2,'0'), (t.getHours()+'').padStart(2,'0'), (t.getMinutes()+'').padStart(2,'0'), (t.getSeconds()+'').padStart(2,'0')].join('');
+    const rnd = Math.random().toString(36).slice(2,7);
+    return `${prefix}${ts}-${rnd}`;
+  };
 
-  <script>
-    const el = id => document.getElementById(id);
-    const goBtn = el('goBtn');
-    const statusEl = el('status');
-    const prog = el('prog');
+  // ----- Config read
+  function getConfig() {
+    return {
+      apiKey: $('apiKey').value.trim(),
+      domain: $('domain').value.trim(),
+      useProxy: $('useProxy').checked,
+      proxyBase: $('proxyBase').value.trim().replace(/\/+$/, '')
+    };
+  }
 
-    function setStatus(msg, cls) {
-      statusEl.className = 'status ' + (cls || '');
-      statusEl.textContent = msg;
+  // ----- API wrapper (direct vs proxy)
+  function apiUrl(path) {
+    const { useProxy, proxyBase } = getConfig();
+    if (useProxy) return `${proxyBase}${path}`;
+    return `https://api.short.io${path}`;
+  }
+
+  async function apiFetch(path, opts = {}) {
+    const { apiKey, useProxy } = getConfig();
+    const headers = Object.assign(
+      { 'Content-Type': 'application/json' },
+      // For proxy mode, the proxy should inject Authorization itself; if not, pass it through
+      useProxy ? {} : { 'Authorization': apiKey }
+    );
+    const res = await fetch(apiUrl(path), { ...opts, headers: { ...headers, ...(opts.headers||{}) } });
+    if (!res.ok) {
+      let t = '';
+      try { t = await res.text(); } catch {}
+      throw new Error(`${res.status} ${res.statusText} — ${t}`);
     }
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : res.text();
+  }
 
-    function validUrl(u) {
-      try { new URL(u); return true; } catch { return false; }
+  // ----- Short.io endpoints
+  // Create link
+  async function shortioCreateLink({ domain, originalURL, path }) {
+    return apiFetch('/links', {
+      method: 'POST',
+      body: JSON.stringify({ domain, originalURL, path })
+    });
+  }
+
+  // List links (paged)
+  async function shortioListLinks({ domain, limit=100, max=1000 }) {
+    let offset = 0, all = [];
+    while (all.length < max) {
+      const q = new URLSearchParams({ domain, limit: String(limit), offset: String(offset) });
+      const data = await apiFetch('/links?' + q.toString(), { method: 'GET' });
+      const items = Array.isArray(data) ? data : (data.links || data.data || []);
+      if (!items || items.length === 0) break;
+      all = all.concat(items);
+      if (items.length < limit) break;
+      offset += limit;
+      await sleep(80);
     }
+    return all;
+  }
 
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  // Delete link by ID
+  async function shortioDeleteLink(id) {
+    return apiFetch(`/links/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
 
-    function uniquePath(prefix = '') {
-      const t = new Date();
-      const ts = [
-        t.getFullYear(),
-        String(t.getMonth() + 1).padStart(2,'0'),
-        String(t.getDate()).padStart(2,'0'),
-        String(t.getHours()).padStart(2,'0'),
-        String(t.getMinutes()).padStart(2,'0'),
-        String(t.getSeconds()).padStart(2,'0')
-      ].join('');
-      const rnd = Math.random().toString(36).slice(2, 8);
-      return `${prefix || ''}${ts}-${rnd}`;
-    }
+  // Normalize link object
+  function normalizeLink(o) {
+    return {
+      id: o.idString || o.id || o._id || '',
+      shortURL: o.shortURL || o.secureShortURL || '',
+      originalURL: o.originalURL || o.originalUrl || '',
+      path: o.path || '',
+      createdAt: o.createdAt || o.created_at || '',
+      clicks: o.clicks || o.totalClicks || o.statClicks || 0
+    };
+  }
 
-    async function createShortLink(proxyUrl, domain, originalURL, path) {
-      const res = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, originalURL, path })
+  // ----- UI state
+  let rows = [];        // normalized links
+  let selected = new Set();
+
+  function setStatus(msg, cls='') {
+    const el = $('status');
+    el.className = 'status ' + cls;
+    el.textContent = msg;
+  }
+
+  function renderTable() {
+    const filter = $('filter').value.trim().toLowerCase();
+    const tbody = $('tbody');
+    tbody.innerHTML = '';
+    let shown = 0;
+
+    rows.forEach(r => {
+      const hay = `${r.shortURL} ${r.originalURL} ${r.path}`.toLowerCase();
+      if (filter && !hay.includes(filter)) return;
+
+      const tr = document.createElement('tr');
+
+      // Select
+      const tdSel = document.createElement('td');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'checkbox';
+      cb.checked = selected.has(r.id);
+      cb.addEventListener('change', () => {
+        if (cb.checked) selected.add(r.id); else selected.delete(r.id);
+        updateBulkControls();
       });
-      if (!res.ok) {
-        let errText = '';
-        try { errText = await res.text(); } catch {}
-        throw new Error(`Proxy/Short.io error ${res.status}: ${errText || res.statusText}`);
-      }
-      return res.json(); // expected to contain { shortURL, ... }
-    }
+      tdSel.appendChild(cb);
+      tr.appendChild(tdSel);
 
-    async function generate() {
-      const destination = el('dest').value.trim();
-      const count = parseInt(el('count').value, 10);
-      const domain = el('domain').value.trim();
-      const proxyUrl = el('proxy').value.trim();
-      const prefix = el('prefix').value.trim();
-      const showUrls = el('showUrls').checked;
-      const landscape = el('landscape').checked;
+      // Short URL
+      const tdShort = document.createElement('td');
+      const a = document.createElement('a');
+      a.href = r.shortURL; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = r.shortURL;
+      tdShort.appendChild(a);
+      tr.appendChild(tdShort);
 
-      if (!destination || !validUrl(destination)) { alert('Enter a valid Destination URL'); return; }
-      if (!domain) { alert('Enter your Short.io domain'); return; }
-      if (!proxyUrl || !validUrl(new URL(proxyUrl, window.location.href).href)) { alert('Enter a valid Proxy URL (absolute or site-relative)'); return; }
-      if (!(count > 0)) { alert('Enter a positive Count'); return; }
+      // Original URL
+      const tdOrig = document.createElement('td');
+      tdOrig.innerHTML = `<span class="mono">${escapeHtml(r.originalURL)}</span>`;
+      tr.appendChild(tdOrig);
 
-      goBtn.disabled = true;
-      prog.hidden = false; prog.value = 0;
-      setStatus('Creating links via proxy…', '');
+      // Path
+      const tdPath = document.createElement('td');
+      tdPath.innerHTML = `<span class="mono">${escapeHtml(r.path)}</span>`;
+      tr.appendChild(tdPath);
 
-      const made = [];
-      for (let i = 0; i < count; i++) {
+      // Created
+      const tdCreated = document.createElement('td');
+      tdCreated.textContent = fmtDate(r.createdAt);
+      tr.appendChild(tdCreated);
+
+      // Clicks
+      const tdClicks = document.createElement('td');
+      tdClicks.textContent = r.clicks ?? 0;
+      tr.appendChild(tdClicks);
+
+      // Actions
+      const tdAct = document.createElement('td');
+      const btnCopy = document.createElement('button');
+      btnCopy.textContent = 'Copy';
+      btnCopy.className = 'secondary';
+      btnCopy.style.padding = '6px 10px';
+      btnCopy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(r.shortURL); setStatus('Copied to clipboard', 'ok'); } catch { setStatus('Copy failed', 'err'); }
+      });
+
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Delete';
+      btnDel.className = 'danger';
+      btnDel.style.padding = '6px 10px';
+      btnDel.style.marginLeft = '6px';
+      btnDel.addEventListener('click', async () => {
+        if (!confirm(`Delete link?\n${r.shortURL}`)) return;
+        btnDel.disabled = true;
         try {
-          const path = uniquePath(prefix);
-          const data = await createShortLink(proxyUrl, domain, destination, path);
-          if (!data.shortURL) throw new Error('No shortURL in response');
-          made.push(data.shortURL);
-          setStatus(`Created ${i + 1}/${count}`, 'ok');
+          await shortioDeleteLink(r.id);
+          rows = rows.filter(x => x.id !== r.id);
+          selected.delete(r.id);
+          renderTable();
+          setStatus('Link deleted', 'ok');
         } catch (e) {
-          setStatus(`Error at index ${i + 1}: ${e.message}`, 'err');
-          // small backoff then continue
-          await sleep(500);
+          setStatus('Delete failed: ' + e.message, 'err');
+          btnDel.disabled = false;
         }
-        prog.value = Math.round(((i + 1) / count) * 100);
-        // Gentle pacing to avoid rate limits; adjust as needed
-        await sleep(120);
+      });
+
+      tdAct.appendChild(btnCopy);
+      tdAct.appendChild(btnDel);
+      tr.appendChild(tdAct);
+
+      tbody.appendChild(tr);
+      shown++;
+    });
+
+    $('countLabel').textContent = `${shown} shown / ${rows.length} total`;
+  }
+
+  function updateBulkControls() {
+    $('bulkDeleteBtn').disabled = selected.size === 0;
+    // Update header checkbox
+    const allRendered = [...$('tbody').querySelectorAll('input[type=checkbox]')];
+    const allChecked = allRendered.length > 0 && allRendered.every(cb => cb.checked);
+    $('selectAll').checked = allChecked;
+  }
+
+  function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ----- Actions
+  $('createBtn').addEventListener('click', async () => {
+    const cfg = getConfig();
+    const destination = $('dest').value.trim();
+    const count = parseInt($('count').value, 10) || 0;
+    const prefix = $('prefix').value.trim();
+
+    if (!cfg.apiKey && !cfg.useProxy) { alert('Enter your Short.io API key'); return; }
+    if (!cfg.domain) { alert('Enter your domain'); return; }
+    if (!destination || !validUrl(destination)) { alert('Enter a valid Destination URL'); return; }
+    if (count < 1) { alert('Count must be at least 1'); return; }
+
+    setStatus('Creating links…', '');
+    $('createBtn').disabled = true;
+
+    try {
+      let created = 0;
+      for (let i = 0; i < count; i++) {
+        const body = { domain: cfg.domain, originalURL: destination, path: prefix ? genPath(prefix) : undefined };
+        const data = await shortioCreateLink(body);
+        const norm = normalizeLink(data);
+        if (!norm.shortURL) throw new Error('No shortURL in response');
+        rows.unshift(norm);
+        created++;
+        if (i % 5 === 0) renderTable(); // incremental paint
+        await sleep(80); // gentle pacing
       }
-
-      // Fill textarea
-      el('links').value = made.join('\n');
-
-      if (made.length === 0) {
-        setStatus('No links created. Check proxy URL, domain, and API key on the proxy.', 'err');
-        goBtn.disabled = false; prog.hidden = true;
-        return;
-      }
-
-      setStatus('Building PDF of QR codes…', '');
-      try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
-        const pageW = doc.internal.pageSize.getWidth();
-        const pageH = doc.internal.pageSize.getHeight();
-
-        const margin = 10;
-        const cols = 3;
-        const cellW = (pageW - margin * 2) / cols;
-        const qrSize = Math.min(50, cellW - 10);
-        const labelH = 6;
-        const rowH = qrSize + labelH + 6;
-
-        let x = margin, y = margin, col = 0;
-
-        for (let i = 0; i < made.length; i++) {
-          const url = made[i];
-
-          // Create QR in a temp container
-          const holder = document.createElement('div');
-          holder.style.position = 'fixed';
-          holder.style.left = '-9999px';
-          document.body.appendChild(holder);
-
-          const qr = new QRCode(holder, { text: url, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M });
-          // Wait a tick for DOM to render
-          await new Promise(r => setTimeout(r, 20));
-
-          // Prefer canvas data; fall back to image
-          let dataUrl = '';
-          const cvs = holder.querySelector('canvas');
-          const img = holder.querySelector('img');
-          if (cvs) dataUrl = cvs.toDataURL('image/png');
-          else if (img) dataUrl = img.src;
-          document.body.removeChild(holder);
-
-          if (!dataUrl) throw new Error('QR generation failed');
-
-          doc.addImage(dataUrl, 'PNG', x + (cellW - qrSize) / 2, y, qrSize, qrSize);
-
-          doc.setFontSize(9);
-          doc.text(showUrls ? url : `Link #${i + 1}`, x + 2, y + qrSize + 5, { maxWidth: cellW - 4 });
-
-          // Advance grid
-          col++;
-          if (col >= cols) {
-            col = 0;
-            x = margin;
-            y += rowH;
-          } else {
-            x += cellW;
-          }
-
-          // New page if needed
-          if (y + rowH > pageH - margin && i < made.length - 1) {
-            doc.addPage();
-            x = margin; y = margin; col = 0;
-          }
-        }
-
-        const safeDomain = domain.replace(/[^a-z0-9.-]/gi, '_');
-        const ts = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `qrcodes_${made.length}_${safeDomain}_${ts}.pdf`;
-        doc.save(filename);
-        setStatus(`Done. PDF downloaded (${made.length} QR codes).`, 'ok');
-      } catch (e) {
-        setStatus(`PDF error: ${e.message}`, 'err');
-      } finally {
-        goBtn.disabled = false; prog.hidden = true;
-      }
+      renderTable();
+      setStatus(`Created ${created} link(s).`, 'ok');
+    } catch (e) {
+      setStatus('Create failed: ' + e.message, 'err');
+    } finally {
+      $('createBtn').disabled = false;
     }
+  });
 
-    goBtn.addEventListener('click', generate);
-  </script>
+  $('refreshBtn').addEventListener('click', async () => {
+    const cfg = getConfig();
+    if (!cfg.apiKey && !cfg.useProxy) { alert('Enter your Short.io API key'); return; }
+    if (!cfg.domain) { alert('Enter your domain'); return; }
+    setStatus('Loading links…', '');
+    $('refreshBtn').disabled = true;
+    try {
+      const list = await shortioListLinks({ domain: cfg.domain, limit: 100, max: 2000 });
+      rows = list.map(normalizeLink);
+      selected.clear();
+      renderTable();
+      updateBulkControls();
+      setStatus(`Loaded ${rows.length} link(s).`, 'ok');
+    } catch (e) {
+      setStatus('Load failed: ' + e.message, 'err');
+    } finally {
+      $('refreshBtn').disabled = false;
+    }
+  });
+
+  $('bulkDeleteBtn').addEventListener('click', async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected link(s)?`)) return;
+    $('bulkDeleteBtn').disabled = true;
+    setStatus('Deleting selected links…', '');
+    try {
+      const ids = Array.from(selected);
+      for (let i = 0; i < ids.length; i++) {
+        try {
+          await shortioDeleteLink(ids[i]);
+          rows = rows.filter(r => r.id !== ids[i]);
+        } catch (e) {
+          // continue on individual failure
+        }
+        if (i % 5 === 0) renderTable();
+        await sleep(60);
+      }
+      selected.clear();
+      renderTable();
+      updateBulkControls();
+      setStatus('Bulk delete complete.', 'ok');
+    } catch (e) {
+      setStatus('Bulk delete failed: ' + e.message, 'err');
+    } finally {
+      $('bulkDeleteBtn').disabled = false;
+    }
+  });
+
+  $('filter').addEventListener('input', () => renderTable());
+  $('selectAll').addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    const visibleRows = $('tbody').querySelectorAll('tr');
+    visibleRows.forEach(tr => {
+      const cb = tr.querySelector('input[type=checkbox]');
+      if (!cb) return;
+      cb.checked = checked;
+      const shortUrlCell = tr.children[1];
+      const shortUrl = shortUrlCell?.querySelector('a')?.href || '';
+      // map back to id
+      const r = rows.find(x => x.shortURL === shortUrl);
+      if (r) { if (checked) selected.add(r.id); else selected.delete(r.id); }
+    });
+    updateBulkControls();
+  });
+
+  // Remember locally
+  $('remember').addEventListener('change', (e) => {
+    const on = e.target.checked;
+    if (on) {
+      const cfg = getConfig();
+      localStorage.setItem('shortio_cfg', JSON.stringify({
+        apiKey: cfg.apiKey, domain: cfg.domain, useProxy: cfg.useProxy, proxyBase: cfg.proxyBase
+      }));
+    } else {
+      localStorage.removeItem('shortio_cfg');
+    }
+  });
+
+  // Load remembered
+  (function init() {
+    const raw = localStorage.getItem('shortio_cfg');
+    if (raw) {
+      try {
+        const cfg = JSON.parse(raw);
+        $('apiKey').value = cfg.apiKey || '';
+        $('domain').value = cfg.domain || '';
+        $('useProxy').checked = !!cfg.useProxy;
+        $('proxyBase').value = cfg.proxyBase || '/api/shortio';
+        $('remember').checked = true;
+      } catch {}
+    }
+  })();
+</script>
 </body>
 </html>
