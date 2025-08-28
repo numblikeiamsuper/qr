@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Short.io Link Manager (via corsproxy.io)</title>
+<title>Short.io Link Creator (via corsproxy.io)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" href="data:,"><!-- Prevent favicon 404 -->
 <style>
@@ -14,12 +14,7 @@
 </style>
 </head>
 <body>
-<h1>Short.io Link Manager (CORS Proxy)</h1>
-
-<label>
-  API Key:
-  <input id="apiKey" type="password" placeholder="Enter your Short.io API key">
-</label>
+<h1>Short.io Link Creator (CORS Proxy)</h1>
 
 <label>
   Original URL:
@@ -27,12 +22,12 @@
 </label>
 
 <label>
-  Domain (e.g. 0.qwe1.gleeze.com):
-  <input id="domain" type="text" value="0.qwe1.gleeze.com">
+  Domain (example: your-domain.short.gy):
+  <input id="domain" type="text" placeholder="your Short.io domain">
 </label>
 
 <label>
-  Path (optional):
+  Path (optional custom alias):
   <input id="path" type="text" placeholder="custom-alias">
 </label>
 
@@ -43,23 +38,21 @@
 
 <script>
 (function(){
+  const API_KEY = "pk_2XsAJ0BPv1WthdRi"; // Hard‑coded API key
   const corsProxyBase = "https://corsproxy.io/?url=";
-  
+  const shortioBase = "https://api.short.io/links"; // Official API endpoint
+
   async function createLink() {
-    const apiKey = document.getElementById('apiKey').value.trim();
     const originalUrl = document.getElementById('originalUrl').value.trim();
     const domain = document.getElementById('domain').value.trim();
     const path = document.getElementById('path').value.trim();
 
-    if (!apiKey || !originalUrl || !domain) {
-      alert("Please enter API key, original URL, and domain");
+    if (!originalUrl || !domain) {
+      alert("Please enter Original URL and Domain");
       return;
     }
 
-    // Build the *real* API endpoint we want
-    const targetUrl = `https://${domain}/api/shortio/links`;
-    // Wrap it with the CORS proxy
-    const proxiedUrl = corsProxyBase + encodeURIComponent(targetUrl);
+    const proxiedUrl = corsProxyBase + encodeURIComponent(shortioBase);
 
     const payload = {
       originalURL: originalUrl,
@@ -71,7 +64,7 @@
       const res = await fetch(proxiedUrl, {
         method: "POST",
         headers: {
-          "Authorization": apiKey,
+          "Authorization": API_KEY,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
